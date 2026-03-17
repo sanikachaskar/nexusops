@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexusOps — Database Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08090c;--panel:#0d0f14;--panel2:#111318;--panel3:#0a0b0f;
+  --border:#1e2230;--border2:#252840;
+  --accent:#00e5ff;--accent2:#7b5ea7;--accent3:#00ff9d;
+  --text:#e2e8f0;--muted:#4a5568;--muted2:#2d3748;
+  --danger:#ff4d6d;--warning:#fbbf24;--success:#00c896;
+  --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden}
+body::before{content:'';position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+
+.app{position:relative;z-index:1;display:grid;grid-template-columns:220px 1fr;grid-template-rows:56px 1fr;height:100vh}
+
+/* TOPBAR */
+.topbar{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px}
+.logo{display:flex;align-items:center;gap:10px;margin-right:auto}
+.logo-hex{width:32px;height:32px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center}
+.logo-hex svg{width:14px;height:14px;fill:#08090c}
+.logo-text{font-size:16px;font-weight:800;letter-spacing:.06em}
+.logo-text span{color:var(--accent)}
+.topbar-right{display:flex;align-items:center;gap:12px;margin-left:auto}
+.topbar-badge{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);border-radius:2px;padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.1em}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+
+/* SIDEBAR */
+.sidebar{background:var(--panel);border-right:1px solid var(--border);padding:16px 0;display:flex;flex-direction:column;overflow-y:auto}
+.nav-section{padding:10px 16px 4px;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:var(--muted);cursor:pointer;border-left:2px solid transparent;transition:all .15s;text-decoration:none}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.nav-item.active{color:var(--accent);border-left-color:var(--accent);background:rgba(0,229,255,.05)}
+.nav-item svg{width:15px;height:15px;flex-shrink:0}
+.nav-spacer{flex:1}
+.nav-footer{padding:12px 16px;border-top:1px solid var(--border)}
+.status-pill{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success)}
+
+/* MAIN — 3 column layout */
+.main{overflow:hidden;display:grid;grid-template-columns:260px 1fr;grid-template-rows:1fr}
+
+/* DB LIST PANEL */
+.db-panel{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.db-panel-header{padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.db-panel-title{font-size:14px;font-weight:700}
+.db-panel-tag{font-family:var(--mono);font-size:10px;color:var(--accent)}
+.db-search{margin:10px;background:var(--panel2);border:1px solid var(--border);border-radius:2px;padding:7px 10px;font-family:var(--mono);font-size:11px;color:var(--text);outline:none;width:calc(100% - 20px)}
+.db-search:focus{border-color:var(--accent)}
+.db-search::placeholder{color:var(--muted)}
+.db-list{overflow-y:auto;flex:1}
+.db-group-label{padding:8px 14px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.db-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-left:2px solid transparent;transition:all .1s}
+.db-item:hover{background:rgba(255,255,255,.03);color:var(--text)}
+.db-item.active{background:rgba(0,229,255,.05);border-left-color:var(--accent)}
+.db-item-icon{width:28px;height:28px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;font-weight:700;flex-shrink:0}
+.db-item-icon.mysql{background:rgba(0,150,200,.15);color:#0096c8}
+.db-item-icon.postgres{background:rgba(50,100,200,.15);color:#336791}
+.db-item-icon.mongo{background:rgba(0,180,80,.15);color:#00b44f}
+.db-item-icon.oracle{background:rgba(220,50,30,.15);color:#dc3218}
+.db-item-icon.redis{background:rgba(220,50,30,.15);color:#dc143c}
+.db-item-info{flex:1;min-width:0}
+.db-item-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.db-item-meta{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.db-item-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.db-item-dot.on{background:var(--success)}
+.db-item-dot.warn{background:var(--warning)}
+.db-item-dot.off{background:var(--danger)}
+
+/* CONTENT PANEL */
+.content-panel{display:flex;flex-direction:column;overflow:hidden}
+
+/* DB HEADER */
+.db-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--panel)}
+.db-title-row{display:flex;align-items:center;gap:10px;flex:1}
+.db-big-icon{width:36px;height:36px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700}
+.db-name-big{font-size:16px;font-weight:800}
+.db-sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px}
+.db-stats{display:flex;gap:20px}
+.db-stat{text-align:center}
+.db-stat-val{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent)}
+.db-stat-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.header-btns{display:flex;gap:8px}
+.btn{padding:7px 14px;border-radius:2px;font-family:var(--mono);font-size:11px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .15s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn-run{background:var(--accent);color:#08090c;border-color:var(--accent);font-weight:700}
+.btn-run:hover{opacity:.9;color:#08090c}
+
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--panel);padding:0 20px}
+.tab{padding:10px 16px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* QUERY AREA */
+.query-area{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.query-editor{background:var(--panel3);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;gap:10px;align-items:flex-start}
+.query-input{flex:1;background:transparent;border:none;outline:none;font-family:var(--mono);font-size:13px;color:var(--accent3);resize:none;min-height:72px;line-height:1.6}
+.query-input::placeholder{color:var(--muted)}
+.run-btn{background:var(--accent);color:#08090c;border:none;border-radius:2px;padding:8px 18px;font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.run-btn:hover{opacity:.85}
+
+/* RESULTS */
+.results-area{flex:1;overflow:auto;padding:0}
+.results-header{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--panel2)}
+.results-meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.results-meta span{color:var(--accent3)}
+.results-table{width:100%;border-collapse:collapse;font-size:12px}
+.results-table thead tr{background:var(--panel2);border-bottom:1px solid var(--border)}
+.results-table thead th{padding:9px 14px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.results-table tbody tr{border-bottom:1px solid rgba(30,34,48,.4);transition:background .1s}
+.results-table tbody tr:hover{background:rgba(255,255,255,.02)}
+.results-table tbody td{padding:9px 14px;font-family:var(--mono);font-size:12px;white-space:nowrap}
+.null-val{color:var(--muted);font-style:italic}
+.num-val{color:var(--accent)}
+.str-val{color:var(--accent3)}
+.date-val{color:var(--warning)}
+.bool-val{color:var(--accent2)}
+.id-val{color:var(--muted)}
+
+/* SCHEMA TAB */
+.schema-view{padding:16px 18px;overflow-y:auto;height:100%}
+.schema-table{margin-bottom:20px;background:var(--panel);border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.schema-table-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel2);border-bottom:1px solid var(--border);cursor:pointer}
+.schema-table-name{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent)}
+.schema-row-count{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.schema-field{display:grid;grid-template-columns:180px 120px 80px 1fr;gap:10px;padding:8px 14px;border-bottom:1px solid rgba(30,34,48,.4);font-family:var(--mono);font-size:11px}
+.schema-field:last-child{border-bottom:none}
+.field-name{color:var(--text)}
+.field-type{color:var(--accent2)}
+.field-key{color:var(--warning)}
+.field-note{color:var(--muted)}
+
+/* METRICS TAB */
+.metrics-view{padding:16px 18px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.metric-card{background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:14px 16px}
+.metric-title{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.metric-val{font-size:22px;font-weight:800;color:var(--accent);font-family:var(--mono)}
+.metric-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px}
+.metric-bar-wrap{height:4px;background:var(--border);border-radius:2px;margin-top:10px}
+.metric-bar{height:100%;border-radius:2px;background:var(--success)}
+
+@keyframes fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.content-panel{animation:fade-in .3s ease both}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-hex"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+      <span class="logo-text">NEXUS<span>OPS</span></span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-badge">LIVE</span>
+      <div class="avatar">SC</div>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-section">Main</div>
+    <a class="nav-item" href="dashboard.html">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="cloud-monitor.html">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>
+      Cloud Resources
+    </a>
+    <a class="nav-item active" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      Databases
+    </a>
+    <a class="nav-item" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Monitoring
+    </a>
+    <a class="nav-item" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+      Data Pipeline
+    </a>
+    <div class="nav-section">DevOps</div>
+    <a class="nav-item" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      Terraform IaC
+    </a>
+    <a class="nav-item" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 2H3v16h5v4l4-4h5l4-4V2z"/></svg>
+      Docker
+    </a>
+    <div class="nav-section">Security</div>
+    <a class="nav-item" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Security
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="nav-footer">
+      <div class="status-pill"><span class="status-dot"></span>5 / 5 connected</div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- DB LIST -->
+    <div class="db-panel">
+      <div class="db-panel-header">
+        <span class="db-panel-title">Databases</span>
+        <span class="db-panel-tag">// 5 connections</span>
+      </div>
+      <input class="db-search" type="text" placeholder="Search databases...">
+      <div class="db-list">
+        <div class="db-group-label">MySQL</div>
+        <div class="db-item active" onclick="selectDB('mysql')">
+          <div class="db-item-icon mysql">MY</div>
+          <div class="db-item-info">
+            <div class="db-item-name">nexusops_db</div>
+            <div class="db-item-meta">MySQL 8.0 · 2.1 GB</div>
+          </div>
+          <div class="db-item-dot on"></div>
+        </div>
+        <div class="db-group-label">PostgreSQL</div>
+        <div class="db-item" onclick="selectDB('postgres')">
+          <div class="db-item-icon postgres">PG</div>
+          <div class="db-item-info">
+            <div class="db-item-name">nexusops_analytics</div>
+            <div class="db-item-meta">Postgres 16 · 8.4 GB</div>
+          </div>
+          <div class="db-item-dot on"></div>
+        </div>
+        <div class="db-group-label">MongoDB</div>
+        <div class="db-item" onclick="selectDB('mongo')">
+          <div class="db-item-icon mongo">MG</div>
+          <div class="db-item-info">
+            <div class="db-item-name">nexusops_logs</div>
+            <div class="db-item-meta">MongoDB 7 · 14.2 GB</div>
+          </div>
+          <div class="db-item-dot on"></div>
+        </div>
+        <div class="db-group-label">Oracle DB</div>
+        <div class="db-item" onclick="selectDB('oracle')">
+          <div class="db-item-icon oracle">OR</div>
+          <div class="db-item-info">
+            <div class="db-item-name">enterprise_db</div>
+            <div class="db-item-meta">Oracle 19c · 56.7 GB</div>
+          </div>
+          <div class="db-item-dot warn"></div>
+        </div>
+        <div class="db-group-label">Redis</div>
+        <div class="db-item" onclick="selectDB('redis')">
+          <div class="db-item-icon redis">RD</div>
+          <div class="db-item-info">
+            <div class="db-item-name">nexusops_cache</div>
+            <div class="db-item-meta">Redis 7 · offline</div>
+          </div>
+          <div class="db-item-dot off"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content-panel" id="content-panel">
+      <!-- Filled by JS -->
+    </div>
+
+  </div>
+</div>
+
+<script>
+const dbData = {
+  mysql: {
+    name: 'nexusops_db', type: 'MySQL', version: '8.0', size: '2.1 GB',
+    host: 'mysql.nexusops.internal:3306', status: 'running',
+    icon: 'mysql', iconText: 'MY', color: '#0096c8',
+    tables: 8, queries: 1240, uptime: '99.98%',
+    defaultQuery: 'SELECT * FROM users LIMIT 10;',
+    results: {
+      cols: ['id','email','role','name','is_active','last_login','created_at'],
+      rows: [
+        ['1','admin@nexusops.dev','admin','Admin User','true','2026-03-17 10:22:01','2026-01-01 09:00:00'],
+        ['2','dev@nexusops.dev','engineer','Dev Engineer','true','2026-03-17 09:14:33','2026-01-05 10:00:00'],
+        ['3','viewer@nexusops.dev','viewer','Read Only','true','2026-03-15 14:30:00','2026-01-10 11:00:00'],
+        ['4','sanika@nexusops.dev','admin','Sanika C','true','2026-03-17 11:00:00','2026-02-01 08:00:00'],
+        ['5','test@nexusops.dev','viewer','Test User','false',null,'2026-02-15 12:00:00'],
+      ]
+    },
+    schema: [
+      {name:'users',rows:'4',fields:[
+        {name:'id',type:'CHAR(36)',key:'PK',note:'UUID primary key'},
+        {name:'email',type:'VARCHAR(255)',key:'UQ',note:'Unique, not null'},
+        {name:'password_hash',type:'VARCHAR(255)',key:'',note:'bcrypt hash'},
+        {name:'role',type:'ENUM',key:'',note:"'admin','engineer','viewer'"},
+        {name:'name',type:'VARCHAR(100)',key:'',note:'Display name'},
+        {name:'is_active',type:'BOOLEAN',key:'',note:'Default: TRUE'},
+        {name:'last_login',type:'DATETIME',key:'',note:'Nullable'},
+        {name:'created_at',type:'DATETIME',key:'',note:'Auto timestamp'},
+      ]},
+      {name:'cloud_resources',rows:'24',fields:[
+        {name:'id',type:'CHAR(36)',key:'PK',note:'UUID'},
+        {name:'provider',type:'ENUM',key:'IDX',note:"'aws','gcp','azure'"},
+        {name:'resource_type',type:'VARCHAR(50)',key:'',note:'Compute, Storage...'},
+        {name:'status',type:'ENUM',key:'',note:"'running','stopped'..."},
+        {name:'metadata',type:'JSON',key:'',note:'Flexible attributes'},
+      ]},
+    ],
+    metrics:{connections:42,maxConn:100,queryTime:'4ms',cacheHit:'94%',cpu:45,mem:68,iops:320}
+  },
+  postgres: {
+    name: 'nexusops_analytics', type: 'PostgreSQL', version: '16', size: '8.4 GB',
+    host: 'postgres.nexusops.internal:5432', status: 'running',
+    icon: 'postgres', iconText: 'PG', color: '#336791',
+    tables: 12, queries: 3840, uptime: '99.97%',
+    defaultQuery: 'SELECT provider, COUNT(*) as total, SUM(cost) as monthly_cost\nFROM cloud_resources\nGROUP BY provider\nORDER BY monthly_cost DESC;',
+    results: {
+      cols: ['provider','total','monthly_cost'],
+      rows: [['aws','10','$685'],['azure','7','$432'],['gcp','7','$447']]
+    },
+    schema: [
+      {name:'resource_metrics',rows:'8640',fields:[
+        {name:'id',type:'BIGSERIAL',key:'PK',note:'Auto increment'},
+        {name:'resource_id',type:'VARCHAR(255)',key:'IDX',note:'FK to cloud_resources'},
+        {name:'cpu_percent',type:'DECIMAL(5,2)',key:'',note:'0.00 - 100.00'},
+        {name:'mem_percent',type:'DECIMAL(5,2)',key:'',note:'0.00 - 100.00'},
+        {name:'recorded_at',type:'TIMESTAMPTZ',key:'IDX',note:'With timezone'},
+      ]},
+    ],
+    metrics:{connections:18,maxConn:100,queryTime:'6ms',cacheHit:'89%',cpu:31,mem:58,iops:890}
+  },
+  mongo: {
+    name: 'nexusops_logs', type: 'MongoDB', version: '7.0', size: '14.2 GB',
+    host: 'mongo.nexusops.internal:27017', status: 'running',
+    icon: 'mongo', iconText: 'MG', color: '#00b44f',
+    tables: 4, queries: 9210, uptime: '99.99%',
+    defaultQuery: 'db.activity_logs.find(\n  { level: "error" },\n  { message: 1, timestamp: 1 }\n).limit(5).sort({ timestamp: -1 });',
+    results: {
+      cols: ['_id','level','message','service','timestamp'],
+      rows: [
+        ['64a1b2c3','error','ETL job failed: connection timeout','data-pipeline','2026-03-17 03:12:44'],
+        ['64a1b2c4','error','Redis connection refused','cache-service','2026-03-16 22:08:11'],
+        ['64a1b2c5','warn','Azure CPU threshold exceeded 85%','monitor','2026-03-16 18:45:00'],
+        ['64a1b2c6','error','Oracle DB slow query > 30s','oracle-connector','2026-03-16 14:22:33'],
+        ['64a1b2c7','warn','Docker image pull rate limit','ci-cd','2026-03-15 09:00:00'],
+      ]
+    },
+    schema: [
+      {name:'activity_logs',rows:'142,880',fields:[
+        {name:'_id',type:'ObjectId',key:'PK',note:'Auto generated'},
+        {name:'level',type:'String',key:'IDX',note:"'info','warn','error'"},
+        {name:'message',type:'String',key:'',note:'Log message text'},
+        {name:'service',type:'String',key:'IDX',note:'Source service name'},
+        {name:'metadata',type:'Object',key:'',note:'Flexible extra data'},
+        {name:'timestamp',type:'Date',key:'IDX',note:'UTC timestamp'},
+      ]},
+    ],
+    metrics:{connections:87,maxConn:200,queryTime:'3ms',cacheHit:'97%',cpu:42,mem:66,iops:1240}
+  },
+  oracle: {
+    name: 'enterprise_db', type: 'Oracle DB', version: '19c', size: '56.7 GB',
+    host: 'oracle.nexusops.internal:1521', status: 'warning',
+    icon: 'oracle', iconText: 'OR', color: '#dc3218',
+    tables: 34, queries: 540, uptime: '98.70%',
+    defaultQuery: 'SELECT e.employee_id, e.name, d.dept_name, e.salary\nFROM employees e\nJOIN departments d ON e.dept_id = d.dept_id\nWHERE e.salary > 50000\nORDER BY e.salary DESC\nFETCH FIRST 5 ROWS ONLY;',
+    results: {
+      cols: ['employee_id','name','dept_name','salary'],
+      rows: [
+        ['1001','Arjun Sharma','Engineering','₹95,000'],
+        ['1002','Priya Mehta','Cloud Ops','₹88,000'],
+        ['1003','Rohan Desai','DevOps','₹82,000'],
+        ['1004','Sneha Patil','Security','₹79,000'],
+        ['1005','Kiran Joshi','Data Eng','₹75,000'],
+      ]
+    },
+    schema: [
+      {name:'EMPLOYEES',rows:'248',fields:[
+        {name:'EMPLOYEE_ID',type:'NUMBER(6)',key:'PK',note:'Primary key'},
+        {name:'NAME',type:'VARCHAR2(100)',key:'',note:'Full name'},
+        {name:'DEPT_ID',type:'NUMBER(4)',key:'FK',note:'FK to DEPARTMENTS'},
+        {name:'SALARY',type:'NUMBER(10,2)',key:'',note:'Annual salary'},
+        {name:'HIRE_DATE',type:'DATE',key:'',note:'Date of joining'},
+      ]},
+    ],
+    metrics:{connections:12,maxConn:50,queryTime:'42ms',cacheHit:'71%',cpu:79,mem:85,iops:210}
+  },
+  redis: {
+    name: 'nexusops_cache', type: 'Redis', version: '7.0', size: 'offline',
+    host: 'redis.nexusops.internal:6379', status: 'stopped',
+    icon: 'redis', iconText: 'RD', color: '#dc143c',
+    tables: 0, queries: 0, uptime: '0%',
+    defaultQuery: '-- Redis is currently offline\n-- Last known keys: 1,842\n-- Restart required',
+    results: { cols: ['status'], rows: [['Connection refused — service stopped']] },
+    schema: [],
+    metrics:{connections:0,maxConn:1000,queryTime:'—',cacheHit:'—',cpu:0,mem:0,iops:0}
+  }
+};
+
+let activeDB = 'mysql';
+let activeTab = 'query';
+
+function selectDB(key) {
+  activeDB = key;
+  document.querySelectorAll('.db-item').forEach(i => i.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  renderContent();
+}
+
+function setTab(tab) {
+  activeTab = tab;
+  renderContent();
+}
+
+function renderContent() {
+  const db = dbData[activeDB];
+  const statusColor = db.status === 'running' ? 'var(--success)' : db.status === 'warning' ? 'var(--warning)' : 'var(--danger)';
+
+  let tabContent = '';
+  if (activeTab === 'query') {
+    const cols = db.results.cols;
+    const rows = db.results.rows;
+    const colHeaders = cols.map(c => `<th>${c}</th>`).join('');
+    const dataRows = rows.map(row =>
+      `<tr>${row.map((cell,i) => {
+        if (cell === null || cell === 'null') return `<td class="null-val">NULL</td>`;
+        if (!isNaN(cell) && cell !== '') return `<td class="num-val">${cell}</td>`;
+        if (cell.match(/^\d{4}-\d{2}/)) return `<td class="date-val">${cell}</td>`;
+        if (cell === 'true' || cell === 'false') return `<td class="bool-val">${cell}</td>`;
+        if (i === 0) return `<td class="id-val">${cell}</td>`;
+        return `<td class="str-val">${cell}</td>`;
+      }).join('')}</tr>`
+    ).join('');
+    tabContent = `
+      <div class="query-area">
+        <div class="query-editor">
+          <textarea class="query-input" id="query-input" rows="4">${db.defaultQuery}</textarea>
+          <button class="run-btn" onclick="runQuery()">Run Query</button>
+        </div>
+        <div class="results-area">
+          <div class="results-header">
+            <span class="results-meta"><span>${rows.length}</span> rows returned in <span>${db.metrics.queryTime}</span></span>
+            <button class="btn" style="font-size:10px;padding:4px 10px">Export CSV</button>
+          </div>
+          <table class="results-table">
+            <thead><tr>${colHeaders}</tr></thead>
+            <tbody>${dataRows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  } else if (activeTab === 'schema') {
+    if (db.schema.length === 0) {
+      tabContent = `<div class="schema-view" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--mono);font-size:12px">No schema available — database offline</div>`;
+    } else {
+      const tables = db.schema.map(t => `
+        <div class="schema-table">
+          <div class="schema-table-header">
+            <span class="schema-table-name">${t.name}</span>
+            <span class="schema-row-count">${t.rows} rows</span>
+          </div>
+          <div style="padding:6px 0">
+            <div class="schema-field" style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:4px 14px 8px">
+              <span>Column</span><span>Type</span><span>Key</span><span>Notes</span>
+            </div>
+            ${t.fields.map(f=>`
+              <div class="schema-field">
+                <span class="field-name">${f.name}</span>
+                <span class="field-type">${f.type}</span>
+                <span class="field-key">${f.key}</span>
+                <span class="field-note">${f.note}</span>
+              </div>`).join('')}
+          </div>
+        </div>`).join('');
+      tabContent = `<div class="schema-view">${tables}</div>`;
+    }
+  } else if (activeTab === 'metrics') {
+    const m = db.metrics;
+    const cpuColor = m.cpu >= 80 ? 'var(--danger)' : m.cpu >= 60 ? 'var(--warning)' : 'var(--success)';
+    const memColor = m.mem >= 80 ? 'var(--danger)' : m.mem >= 60 ? 'var(--warning)' : 'var(--success)';
+    tabContent = `
+      <div class="metrics-view">
+        <div class="metric-card">
+          <div class="metric-title">Active Connections</div>
+          <div class="metric-val">${m.connections}</div>
+          <div class="metric-sub">of ${m.maxConn} max</div>
+          <div class="metric-bar-wrap"><div class="metric-bar" style="width:${Math.round(m.connections/m.maxConn*100)}%;background:var(--accent)"></div></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Avg Query Time</div>
+          <div class="metric-val">${m.queryTime}</div>
+          <div class="metric-sub">last 1 hour average</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Cache Hit Rate</div>
+          <div class="metric-val" style="color:var(--accent3)">${m.cacheHit}</div>
+          <div class="metric-sub">buffer pool efficiency</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">IOPS</div>
+          <div class="metric-val" style="color:var(--warning)">${m.iops}</div>
+          <div class="metric-sub">read/write operations per sec</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">CPU Usage</div>
+          <div class="metric-val" style="color:${cpuColor}">${m.cpu}%</div>
+          <div class="metric-sub">database server CPU</div>
+          <div class="metric-bar-wrap"><div class="metric-bar" style="width:${m.cpu}%;background:${cpuColor}"></div></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Memory Usage</div>
+          <div class="metric-val" style="color:${memColor}">${m.mem}%</div>
+          <div class="metric-sub">RAM utilisation</div>
+          <div class="metric-bar-wrap"><div class="metric-bar" style="width:${m.mem}%;background:${memColor}"></div></div>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('content-panel').innerHTML = `
+    <div class="db-header">
+      <div class="db-title-row">
+        <div class="db-big-icon db-item-icon ${db.icon}" style="width:36px;height:36px;font-size:11px">${db.iconText}</div>
+        <div>
+          <div class="db-name-big">${db.name}</div>
+          <div class="db-sub">${db.type} ${db.version} &nbsp;·&nbsp; ${db.host} &nbsp;·&nbsp; <span style="color:${statusColor}">${db.status}</span></div>
+        </div>
+      </div>
+      <div class="db-stats">
+        <div class="db-stat"><div class="db-stat-val">${db.size}</div><div class="db-stat-lbl">Size</div></div>
+        <div class="db-stat"><div class="db-stat-val">${db.tables}</div><div class="db-stat-lbl">Tables</div></div>
+        <div class="db-stat"><div class="db-stat-val">${db.queries.toLocaleString()}</div><div class="db-stat-lbl">Queries/hr</div></div>
+        <div class="db-stat"><div class="db-stat-val" style="color:${statusColor}">${db.uptime}</div><div class="db-stat-lbl">Uptime</div></div>
+      </div>
+      <div class="header-btns">
+        <button class="btn">Backup</button>
+        <button class="btn btn-run">Connect</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab ${activeTab==='query'?'active':''}" onclick="setTab('query')">Query Editor</div>
+      <div class="tab ${activeTab==='schema'?'active':''}" onclick="setTab('schema')">Schema</div>
+      <div class="tab ${activeTab==='metrics'?'active':''}" onclick="setTab('metrics')">Metrics</div>
+    </div>
+    ${tabContent}`;
+}
+
+function runQuery() {
+  const q = document.getElementById('query-input').value;
+  const db = dbData[activeDB];
+  // Simulate query execution — flicker row count
+  const header = document.querySelector('.results-meta');
+  if (header) {
+    header.innerHTML = `<span style="color:var(--warning)">Executing...</span>`;
+    setTimeout(() => {
+      header.innerHTML = `<span class="results-meta"><span>${db.results.rows.length}</span> rows returned in <span>${db.metrics.queryTime}</span></span>`;
+    }, 600);
+  }
+}
+
+renderContent();
+</script>
+</body>
+</html>
