@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexusOps — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #08090c;
+    --panel:     #0d0f14;
+    --border:    #1e2230;
+    --accent:    #00e5ff;
+    --accent2:   #7b5ea7;
+    --text:      #e2e8f0;
+    --muted:     #4a5568;
+    --danger:    #ff4d6d;
+    --success:   #00c896;
+    --mono:      'Space Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow: hidden;
+  }
+
+  /* ── GRID BACKGROUND ── */
+  .grid-bg {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ── GLOW ORBS ── */
+  .orb {
+    position: fixed; border-radius: 50%;
+    filter: blur(120px); opacity: .18; z-index: 0;
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+  .orb1 { width: 520px; height: 520px; background: var(--accent2); top: -160px; left: -100px; animation-delay: 0s; }
+  .orb2 { width: 400px; height: 400px; background: var(--accent); bottom: -100px; right: -80px; animation-delay: -7s; }
+
+  @keyframes drift {
+    from { transform: translate(0,0) scale(1); }
+    to   { transform: translate(30px, 20px) scale(1.08); }
+  }
+
+  /* ── LAYOUT ── */
+  .layout {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 480px 1fr;
+    grid-template-rows: 1fr;
+    height: 100vh;
+    align-items: center;
+  }
+
+  /* ── LEFT PANEL — branding ── */
+  .branding {
+    grid-column: 1;
+    padding: 0 40px 0 60px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+
+  .logo-mark {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .logo-hex {
+    width: 40px; height: 40px;
+    background: var(--accent); clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+    display: flex; align-items: center; justify-content: center;
+    animation: pulse-hex 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-hex {
+    0%,100% { box-shadow: 0 0 0 0 rgba(0,229,255,.4); }
+    50%      { box-shadow: 0 0 0 12px rgba(0,229,255,0); }
+  }
+
+  .logo-hex svg { width: 20px; height: 20px; fill: #08090c; }
+
+  .logo-text {
+    font-family: var(--sans);
+    font-size: 22px; font-weight: 800;
+    letter-spacing: .06em;
+    color: var(--text);
+  }
+  .logo-text span { color: var(--accent); }
+
+  .brand-headline {
+    font-size: 42px; font-weight: 800; line-height: 1.1;
+    letter-spacing: -.01em;
+  }
+  .brand-headline em { font-style: normal; color: var(--accent); }
+
+  .brand-sub {
+    font-size: 14px; color: var(--muted); line-height: 1.8;
+    font-family: var(--mono); max-width: 340px;
+  }
+
+  /* ── STATS STRIP ── */
+  .stats { display: flex; gap: 28px; margin-top: 8px; }
+  .stat { display: flex; flex-direction: column; gap: 4px; }
+  .stat-val { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--accent); }
+  .stat-lbl { font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+
+  /* ── DIVIDER ── */
+  .v-divider {
+    grid-column: 1; /* overlay trick */
+    width: 1px; height: 60%; background: var(--border);
+    justify-self: end; align-self: center;
+    margin-right: -1px;
+  }
+
+  /* ── LOGIN CARD ── */
+  .card {
+    grid-column: 2;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 48px 44px 44px;
+    position: relative;
+    animation: card-in .5s cubic-bezier(.22,1,.36,1) both;
+  }
+
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* corner accents */
+  .card::before, .card::after {
+    content: ''; position: absolute;
+    width: 16px; height: 16px;
+    border-color: var(--accent);
+    border-style: solid;
+  }
+  .card::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .card::after  { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+  .card-tag {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--accent); letter-spacing: .14em; text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .card-tag::before { content: '// '; opacity: .5; }
+
+  .card-title {
+    font-size: 28px; font-weight: 800; margin-bottom: 6px;
+  }
+  .card-desc {
+    font-size: 13px; color: var(--muted); font-family: var(--mono);
+    margin-bottom: 36px;
+  }
+
+  /* ── FORM ── */
+  .field { margin-bottom: 22px; }
+
+  .field-label {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px;
+    font-family: var(--mono);
+  }
+
+  .field-label a { color: var(--accent); text-decoration: none; font-size: 11px; }
+  .field-label a:hover { text-decoration: underline; }
+
+  .field-wrap { position: relative; }
+
+  .field-wrap .icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  input[type="email"],
+  input[type="password"],
+  input[type="text"] {
+    width: 100%; padding: 13px 14px 13px 40px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--mono); font-size: 14px;
+    outline: none;
+    transition: border-color .2s, background .2s;
+    caret-color: var(--accent);
+  }
+
+  input:focus {
+    border-color: var(--accent);
+    background: rgba(0,229,255,.04);
+  }
+
+  input::placeholder { color: var(--muted); }
+
+  .eye-btn {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    padding: 4px; line-height: 1;
+    transition: color .2s;
+  }
+  .eye-btn:hover { color: var(--accent); }
+
+  /* ── ROLE SELECTOR ── */
+  .role-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 24px; }
+
+  .role-btn {
+    padding: 10px 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    border-radius: 2px;
+    color: var(--muted);
+    font-family: var(--mono); font-size: 11px;
+    cursor: pointer; text-align: center;
+    letter-spacing: .06em;
+    transition: all .15s;
+  }
+  .role-btn:hover { border-color: var(--accent); color: var(--text); }
+  .role-btn.active {
+    border-color: var(--accent); color: var(--accent);
+    background: rgba(0,229,255,.06);
+  }
+
+  .role-icon { display: block; font-size: 18px; margin-bottom: 4px; }
+
+  /* ── SUBMIT BTN ── */
+  .btn-login {
+    width: 100%; padding: 14px;
+    background: var(--accent);
+    color: #08090c;
+    border: none; border-radius: 2px;
+    font-family: var(--sans); font-size: 15px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    cursor: pointer;
+    position: relative; overflow: hidden;
+    transition: opacity .2s, transform .1s;
+  }
+
+  .btn-login::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.18) 50%, transparent 100%);
+    transform: translateX(-100%);
+    transition: transform .5s;
+  }
+
+  .btn-login:hover::after { transform: translateX(100%); }
+  .btn-login:hover { opacity: .9; }
+  .btn-login:active { transform: scale(.98); }
+
+  /* ── DIVIDER ── */
+  .or-row {
+    display: flex; align-items: center; gap: 12px;
+    margin: 20px 0;
+    font-size: 11px; color: var(--muted); font-family: var(--mono);
+  }
+  .or-row::before, .or-row::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── SSO BTN ── */
+  .btn-sso {
+    width: 100%; padding: 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--mono); font-size: 13px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+    transition: border-color .2s, background .2s;
+  }
+  .btn-sso:hover { border-color: var(--accent2); background: rgba(123,94,167,.06); }
+
+  /* ── FOOTER ── */
+  .card-footer {
+    margin-top: 24px; text-align: center;
+    font-size: 12px; color: var(--muted); font-family: var(--mono);
+  }
+  .card-footer a { color: var(--accent); text-decoration: none; }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 28px; background: var(--panel);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 24px; padding: 0 20px;
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    z-index: 10;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot-green { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .dot-yellow { background: #fbbf24; }
+
+  .status-bar .spacer { flex: 1; }
+  .status-time { color: var(--accent); }
+
+  /* ── ERROR MESSAGE ── */
+  .error-msg {
+    background: rgba(255,77,109,.08); border: 1px solid rgba(255,77,109,.3);
+    border-radius: 2px; padding: 10px 14px;
+    font-family: var(--mono); font-size: 12px; color: var(--danger);
+    margin-bottom: 18px; display: none;
+  }
+  .error-msg.show { display: block; animation: shake .3s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+  /* ── LOADING OVERLAY ── */
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(8,9,12,.85);
+    z-index: 100; display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px;
+  }
+  .loading-overlay.show { display: flex; }
+
+  .loader-bar {
+    width: 240px; height: 2px; background: var(--border); overflow: hidden;
+  }
+  .loader-fill {
+    height: 100%; background: var(--accent);
+    animation: load-fill 1.8s cubic-bezier(.4,0,.2,1) forwards;
+  }
+  @keyframes load-fill { from { width: 0; } to { width: 100%; } }
+
+  .loader-text {
+    font-family: var(--mono); font-size: 12px; color: var(--accent);
+    letter-spacing: .1em;
+  }
+  .loader-text::after {
+    content: '';
+    animation: dots 1.2s steps(3,end) infinite;
+  }
+  @keyframes dots { 0%{content:''} 33%{content:'.'} 66%{content:'..'} 100%{content:'...'} }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<div class="layout">
+
+  <!-- BRANDING -->
+  <div class="branding">
+    <div class="logo-mark">
+      <div class="logo-hex">
+        <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <span class="logo-text">NEXUS<span>OPS</span></span>
+    </div>
+
+    <div class="brand-headline">
+      Cloud infra.<br>
+      <em>Fully visible.</em><br>
+      Always on.
+    </div>
+
+    <p class="brand-sub">
+      Monitor, secure and scale<br>
+      your cloud stack from a single<br>
+      unified operations dashboard.
+    </p>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-val">99.97%</span>
+        <span class="stat-lbl">Uptime SLA</span>
+      </div>
+      <div class="stat">
+        <span class="stat-val">12ms</span>
+        <span class="stat-lbl">Avg latency</span>
+      </div>
+      <div class="stat">
+        <span class="stat-val">3-cloud</span>
+        <span class="stat-lbl">AWS · GCP · Azure</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN CARD -->
+  <div class="card">
+    <div class="card-tag">Secure access portal</div>
+    <h1 class="card-title">Sign in</h1>
+    <p class="card-desc">// Enter your credentials to continue</p>
+
+    <!-- Role selector -->
+    <div class="role-grid" id="roleGrid">
+      <button class="role-btn active" data-role="admin" onclick="selectRole(this)">
+        <span class="role-icon">⚙</span>Admin
+      </button>
+      <button class="role-btn" data-role="engineer" onclick="selectRole(this)">
+        <span class="role-icon">⚡</span>Engineer
+      </button>
+      <button class="role-btn" data-role="viewer" onclick="selectRole(this)">
+        <span class="role-icon">◎</span>Viewer
+      </button>
+    </div>
+
+    <div class="error-msg" id="errMsg">⚠ Invalid credentials. Please try again.</div>
+
+    <!-- Email -->
+    <div class="field">
+      <div class="field-label"><span>Email</span></div>
+      <div class="field-wrap">
+        <span class="icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/>
+          </svg>
+        </span>
+        <input type="email" id="emailInput" placeholder="ops@nexusops.dev" autocomplete="email">
+      </div>
+    </div>
+
+    <!-- Password -->
+    <div class="field">
+      <div class="field-label">
+        <span>Password</span>
+        <a href="#">Forgot password?</a>
+      </div>
+      <div class="field-wrap">
+        <span class="icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </span>
+        <input type="password" id="passInput" placeholder="••••••••••••" autocomplete="current-password">
+        <button class="eye-btn" onclick="togglePass()" id="eyeBtn" title="Show/hide password">
+          <svg id="eyeIcon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <button class="btn-login" onclick="doLogin()">ACCESS DASHBOARD</button>
+
+    <div class="or-row">SSO</div>
+
+    <button class="btn-sso">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      Continue with Enterprise SSO
+    </button>
+
+    <div class="card-footer">
+      No account? <a href="#">Request access →</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span><span class="status-dot dot-green"></span>All systems operational</span>
+  <span><span class="status-dot dot-yellow"></span>3 nodes syncing</span>
+  <span class="spacer"></span>
+  <span>v2.4.1-stable</span>
+  <span class="status-time" id="clock"></span>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div style="font-family:'Space Mono',monospace;font-size:13px;color:#4a5568;letter-spacing:.1em;">AUTHENTICATING</div>
+  <div class="loader-bar"><div class="loader-fill" id="loaderFill"></div></div>
+  <div class="loader-text">Connecting to NexusOps</div>
+</div>
+
+<script>
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toUTCString().replace('GMT','UTC').split(' ').slice(1).join(' ');
+  }
+  updateClock(); setInterval(updateClock, 1000);
+
+  // Role select
+  function selectRole(btn) {
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // Toggle password
+  let passVisible = false;
+  function togglePass() {
+    passVisible = !passVisible;
+    const inp = document.getElementById('passInput');
+    inp.type = passVisible ? 'text' : 'password';
+    document.getElementById('eyeIcon').style.opacity = passVisible ? '1' : '0.5';
+  }
+
+  // Login
+  function doLogin() {
+    const email = document.getElementById('emailInput').value.trim();
+    const pass  = document.getElementById('passInput').value;
+    const err   = document.getElementById('errMsg');
+
+    err.classList.remove('show');
+
+    if (!email || !pass) {
+      err.textContent = '⚠ Please enter your email and password.';
+      err.classList.add('show'); return;
+    }
+
+    // Show loader
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.add('show');
+
+    // Reset & restart bar animation
+    const fill = document.getElementById('loaderFill');
+    fill.style.animation = 'none';
+    fill.offsetHeight; // reflow
+    fill.style.animation = 'load-fill 1.8s cubic-bezier(.4,0,.2,1) forwards';
+
+    setTimeout(() => {
+      overlay.classList.remove('show');
+      // Demo: show error for wrong creds
+      if (email !== 'admin@nexusops.dev' || pass !== 'admin123') {
+        err.textContent = '⚠ Invalid credentials. Use admin@nexusops.dev / admin123 for demo.';
+        err.classList.add('show');
+      } else {
+        document.body.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:center;height:100vh;
+            font-family:'Space Mono',monospace;color:#00e5ff;font-size:14px;letter-spacing:.1em;
+            background:#08090c;">
+            ✓ &nbsp; AUTHENTICATED — LOADING DASHBOARD...
+          </div>`;
+      }
+    }, 1900);
+  }
+
+  // Enter key
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>
