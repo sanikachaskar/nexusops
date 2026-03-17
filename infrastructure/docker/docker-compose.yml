@@ -1,0 +1,65 @@
+version: "3.9"
+services:
+  frontend:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.frontend
+    ports: ["3000:80"]
+    depends_on: [backend]
+    networks: [nexusops-net]
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.backend
+    ports: ["5000:5000"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+    depends_on: [mysql, mongodb, postgres]
+    networks: [nexusops-net]
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: nexusops_db
+      MYSQL_USER: nexusops_user
+      MYSQL_PASSWORD: devpass
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../../database/migrations:/docker-entrypoint-initdb.d
+    ports: ["3306:3306"]
+    networks: [nexusops-net]
+
+  mongodb:
+    image: mongo:7
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: nexusops_logs
+    volumes: [mongo_data:/data/db]
+    ports: ["27017:27017"]
+    networks: [nexusops-net]
+
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_DB: nexusops_analytics
+      POSTGRES_USER: nexusops_user
+      POSTGRES_PASSWORD: devpass
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    ports: ["5432:5432"]
+    networks: [nexusops-net]
+
+networks:
+  nexusops-net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  mongo_data:
+  postgres_data:
